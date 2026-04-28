@@ -1628,6 +1628,7 @@ import { showToast } from './toast';
 
 interface StoreLike {
   isAuthenticated(): boolean;
+  currentActor(): string | null;
   commit(op: string, payload: any, opts?: { files?: Record<string, string> }): Promise<{ sha: string }>;
 }
 
@@ -1659,6 +1660,12 @@ export async function attemptPlace(args: AttemptPlaceArgs): Promise<AttemptResul
   const files = { [path]: JSON.stringify({ slot: [slot[0], slot[1]] }) };
   try {
     const { sha } = await store.commit('place', { piece, slot }, { files });
+    // Optimistically apply to local state so the renderer updates immediately.
+    state.applyEvent({
+      op: 'place', piece, slot,
+      actor: store.currentActor() ?? 'unknown',
+      ts: new Date().toISOString(), v: 1, sha,
+    });
     return { kind: 'placed', sha };
   } catch (err: any) {
     if (err?.name === 'ConflictError') {
