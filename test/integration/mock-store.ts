@@ -11,9 +11,9 @@ export interface MockStoreOptions {
 export class MockStore {
   private events: AnyEvent[] = [];
   private actor: string | null = null;
-  public commitCalls: Array<{ op: string; payload: any; files?: Record<string, string> }> = [];
+  public commitCalls: Array<{ op: string; payload: any; files: Record<string, string> | undefined }> = [];
   private subscribers = new Set<(events: AnyEvent[]) => void>();
-  private rejectNext?: Error;
+  private rejectNext: Error | undefined;
 
   constructor(opts: MockStoreOptions = {}) {
     this.events = opts.initialEvents ? [...opts.initialEvents] : [];
