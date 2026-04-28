@@ -8,11 +8,3 @@ export function isValidPlacement(piece: number, slot: readonly [number, number])
   if (!Number.isInteger(col) || col < 0 || col >= GRID_SIZE) return false;
   return row * GRID_SIZE + col === piece;
 }
-
-export function pieceToSlot(piece: number): [number, number] {
-  return [Math.floor(piece / GRID_SIZE), piece % GRID_SIZE];
-}
-
-export function slotToPiece(slot: readonly [number, number]): number {
-  return slot[0] * GRID_SIZE + slot[1];
-}

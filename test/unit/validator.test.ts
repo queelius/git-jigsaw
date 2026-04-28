@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { isValidPlacement, GRID_SIZE } from '../../src/validator';
+import { isValidPlacement, GRID_SIZE, PIECE_COUNT } from '../../src/validator';
 
 describe('isValidPlacement', () => {
   it('GRID_SIZE is 8', () => {
     expect(GRID_SIZE).toBe(8);
+  });
+
+  it('PIECE_COUNT is 64', () => {
+    expect(PIECE_COUNT).toBe(64);
   });
 
   it('accepts piece 0 at slot [0, 0]', () => {
