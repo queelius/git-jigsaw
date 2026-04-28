@@ -38,11 +38,15 @@ export class PuzzleState {
 
   applyEvent(event: Event): void {
     if (event.op !== 'place') return;
-    const place = event as PlaceEvent;
-    if (!isValidPlacement(place.piece, place.slot)) return;
-    if (this.placements.has(place.piece)) return;
-    this.placements.set(place.piece, place.slot);
-    this.contributors.add(place.actor);
+    const piece = (event as Record<string, unknown>).piece;
+    const slot = (event as Record<string, unknown>).slot;
+    if (typeof piece !== 'number') return;
+    if (!Array.isArray(slot) || slot.length !== 2) return;
+    if (typeof slot[0] !== 'number' || typeof slot[1] !== 'number') return;
+    if (!isValidPlacement(piece, [slot[0], slot[1]] as const)) return;
+    if (this.placements.has(piece)) return;
+    this.placements.set(piece, [slot[0], slot[1]] as const);
+    this.contributors.add((event as PlaceEvent).actor);
     this.emit();
   }
 

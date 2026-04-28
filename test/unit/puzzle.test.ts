@@ -79,4 +79,34 @@ describe('PuzzleState', () => {
     s.applyEvent(baseEvent({ piece: 99, slot: [0, 0], sha: 'b' })); // invalid; no change
     expect(count).toBe(1);
   });
+
+  it('does not throw on malformed place event (missing piece/slot)', () => {
+    const s = new PuzzleState();
+    expect(() => {
+      s.applyEvent({ op: 'place', actor: 'a', ts: 't', v: 1, sha: 'x' } as any);
+    }).not.toThrow();
+    expect(s.placements.size).toBe(0);
+    expect(s.contributors.size).toBe(0);
+  });
+
+  it('does not throw on place event with non-numeric piece', () => {
+    const s = new PuzzleState();
+    expect(() => {
+      s.applyEvent({ op: 'place', piece: 'foo', slot: [0, 0], actor: 'a', ts: 't', v: 1, sha: 'x' } as any);
+    }).not.toThrow();
+    expect(s.placements.size).toBe(0);
+  });
+
+  it('does not throw on place event with malformed slot', () => {
+    const s = new PuzzleState();
+    expect(() => {
+      s.applyEvent({ op: 'place', piece: 0, slot: 'bogus', actor: 'a', ts: 't', v: 1, sha: 'x' } as any);
+    }).not.toThrow();
+    expect(s.placements.size).toBe(0);
+
+    expect(() => {
+      s.applyEvent({ op: 'place', piece: 0, slot: [0], actor: 'a', ts: 't', v: 1, sha: 'x' } as any);
+    }).not.toThrow();
+    expect(s.placements.size).toBe(0);
+  });
 });
