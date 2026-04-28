@@ -799,18 +799,51 @@ The renderer paints `PuzzleState` onto a `<canvas>`. For each placed piece, it c
 
 Create `test/unit/renderer.test.ts`:
 
+Note: happy-dom v15 does not implement Path2D or canvas getContext('2d'), so the test stubs them locally.
+
 ```ts
 /**
  * @vitest-environment happy-dom
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+
+// happy-dom v15 does not implement Path2D or canvas 2D context.
+// Stub the minimum surface area the renderer touches so we can
+// verify behavior without a real rendering engine.
+class Path2DStub {
+  moveTo(_x: number, _y: number): void {}
+  lineTo(_x: number, _y: number): void {}
+  bezierCurveTo(
+    _cp1x: number, _cp1y: number,
+    _cp2x: number, _cp2y: number,
+    _x: number, _y: number,
+  ): void {}
+  closePath(): void {}
+}
+
+interface FakeCtx {
+  clearRect: ReturnType<typeof vi.fn>;
+  strokeRect: ReturnType<typeof vi.fn>;
+  save: ReturnType<typeof vi.fn>;
+  restore: ReturnType<typeof vi.fn>;
+  clip: ReturnType<typeof vi.fn>;
+  stroke: ReturnType<typeof vi.fn>;
+  drawImage: ReturnType<typeof vi.fn>;
+  strokeStyle: string;
+  lineWidth: number;
+}
+
+beforeAll(() => {
+  (globalThis as { Path2D?: unknown }).Path2D = Path2DStub;
+});
+
 import { piecePath, paintBoard, BOARD_SIZE, TILE_SIZE } from '../../src/renderer';
 import { PuzzleState } from '../../src/puzzle';
 
 describe('piecePath', () => {
   it('returns a Path2D for a valid piece', () => {
     const p = piecePath('seedabc1234567890', 0, 0);
-    expect(p).toBeInstanceOf(Path2D);
+    expect(p).toBeInstanceOf(Path2DStub);
   });
 
   it('BOARD_SIZE is 1024 and TILE_SIZE is 128', () => {
@@ -820,32 +853,35 @@ describe('piecePath', () => {
 });
 
 describe('paintBoard', () => {
-  let canvas: HTMLCanvasElement;
-  let ctx: CanvasRenderingContext2D;
-  let drawImageSpy: ReturnType<typeof vi.fn>;
+  let ctx: FakeCtx;
 
   beforeEach(() => {
-    canvas = document.createElement('canvas');
-    canvas.width = BOARD_SIZE;
-    canvas.height = BOARD_SIZE;
-    ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-    drawImageSpy = vi.fn();
-    (ctx as any).drawImage = drawImageSpy;
+    ctx = {
+      clearRect: vi.fn(),
+      strokeRect: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
+      clip: vi.fn(),
+      stroke: vi.fn(),
+      drawImage: vi.fn(),
+      strokeStyle: '',
+      lineWidth: 0,
+    };
   });
 
   it('paints a placed piece', () => {
     const s = new PuzzleState();
     s.applyEvent({ op: 'place', piece: 0, slot: [0, 0], actor: 'alice', ts: 't', v: 1, sha: 'a' });
-    const source = document.createElement('canvas');
-    paintBoard(ctx, s, source, 'seedabc1234567890');
-    expect(drawImageSpy).toHaveBeenCalled();
+    const source = {} as CanvasImageSource;
+    paintBoard(ctx as unknown as CanvasRenderingContext2D, s, source, 'seedabc1234567890');
+    expect(ctx.drawImage).toHaveBeenCalled();
   });
 
   it('does not paint unplaced pieces', () => {
     const s = new PuzzleState();
-    const source = document.createElement('canvas');
-    paintBoard(ctx, s, source, 'seedabc1234567890');
-    expect(drawImageSpy).not.toHaveBeenCalled();
+    const source = {} as CanvasImageSource;
+    paintBoard(ctx as unknown as CanvasRenderingContext2D, s, source, 'seedabc1234567890');
+    expect(ctx.drawImage).not.toHaveBeenCalled();
   });
 });
 ```
