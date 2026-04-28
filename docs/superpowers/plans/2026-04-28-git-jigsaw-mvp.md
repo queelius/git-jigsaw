@@ -2163,10 +2163,9 @@ def test_commit_and_push_invokes_git(tmp_path: Path, monkeypatch):
     puzzle_dir = tmp_path / "jigsaw" / "2026-W17"
     puzzle_dir.mkdir(parents=True)
     commit_and_push(tmp_path, puzzle_dir, "2026-W17", "a prompt")
-    cmds = [" ".join(c) for c in calls]
-    assert any("git add" in c for c in cmds)
-    assert any("git commit" in c for c in cmds[1:])
-    assert any("git push" in c for c in cmds[2:])
+    assert any(call[0] == "git" and "add" in call for call in calls)
+    assert any(call[0] == "git" and "commit" in call for call in calls)
+    assert any(call[0] == "git" and "push" in call for call in calls)
 ```
 
 - [ ] **Step 10: Run tests, verify they pass**
