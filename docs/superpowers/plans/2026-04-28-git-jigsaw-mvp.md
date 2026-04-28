@@ -510,14 +510,17 @@ describe('tabPattern', () => {
     expect(Math.abs(tabs - blanks)).toBeLessThan(50);
   });
 
-  it('different seeds produce different patterns', () => {
-    const a = tabPattern('seedA1234567890a', 3, 4, 'E');
-    const b = tabPattern('seedB1234567890b', 3, 4, 'E');
-    if (a === b) {
-      const a2 = tabPattern('seedA1234567890a', 5, 2, 'S');
-      const b2 = tabPattern('seedB1234567890b', 5, 2, 'S');
-      expect(a !== b || a2 !== b2).toBe(true);
+  it('different seeds produce different patterns at many internal edges', () => {
+    const seedA = 'seedA1234567890a';
+    const seedB = 'seedB1234567890b';
+    let differences = 0;
+    for (let r = 0; r < GRID_SIZE; r++) {
+      for (let c = 0; c < GRID_SIZE; c++) {
+        if (tabPattern(seedA, r, c, 'E') !== tabPattern(seedB, r, c, 'E')) differences++;
+        if (tabPattern(seedA, r, c, 'S') !== tabPattern(seedB, r, c, 'S')) differences++;
+      }
     }
+    expect(differences).toBeGreaterThan(10);
   });
 });
 ```
@@ -559,7 +562,7 @@ export function tabPattern(seed: string, row: number, col: number, edge: Edge): 
   else { r1 = row - 1; axis = 'V'; }
 
   const key = `${seed}|${axis}|${r1},${c1}|${r2},${c2}`;
-  const bit = fnv1a(key) & 1;
+  const bit = (fnv1a(key) >>> 31) & 1;
   const sign: -1 | 1 = bit === 0 ? -1 : 1;
 
   const isCanonical = (edge === 'E' || edge === 'S');
