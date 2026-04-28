@@ -407,15 +407,9 @@ export function isValidPlacement(piece: number, slot: readonly [number, number])
   if (!Number.isInteger(col) || col < 0 || col >= GRID_SIZE) return false;
   return row * GRID_SIZE + col === piece;
 }
-
-export function pieceToSlot(piece: number): [number, number] {
-  return [Math.floor(piece / GRID_SIZE), piece % GRID_SIZE];
-}
-
-export function slotToPiece(slot: readonly [number, number]): number {
-  return slot[0] * GRID_SIZE + slot[1];
-}
 ```
+
+Add a `PIECE_COUNT` test alongside the `GRID_SIZE` test (11 tests total). YAGNI on `pieceToSlot`/`slotToPiece` helpers since downstream tasks inline `[Math.floor(piece / 8), piece % 8]`.
 
 - [ ] **Step 4: Run test, verify it passes**
 
