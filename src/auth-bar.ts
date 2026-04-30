@@ -1,10 +1,11 @@
 import type { PuzzleState } from './puzzle';
 import { PIECE_COUNT } from './validator';
+import { showToast } from './toast';
 
 interface StoreLike {
   isAuthenticated(): boolean;
   currentActor(): string | null;
-  signIn(): Promise<void>;
+  signInWithToken(token: string): Promise<void>;
 }
 
 interface MountOpts {
@@ -12,6 +13,13 @@ interface MountOpts {
   store: StoreLike;
   week: string;
 }
+
+const PAT_INSTRUCTIONS = (
+  'Paste a GitHub Personal Access Token (classic) with "repo" scope.\n\n' +
+  'Generate one at:\n' +
+  'https://github.com/settings/tokens/new?scopes=repo&description=metafunctor%20jigsaw\n\n' +
+  'The token stays in your browser (localStorage). The page never sends it anywhere except api.github.com.'
+);
 
 export function mountAuthBar(host: HTMLElement, { state, store, week }: MountOpts): () => void {
   host.classList.add('jigsaw-auth-bar');
@@ -39,9 +47,18 @@ export function mountAuthBar(host: HTMLElement, { state, store, week }: MountOpt
   };
 
   btn.addEventListener('click', async () => {
+    const token = window.prompt(PAT_INSTRUCTIONS);
+    if (!token) return;
     btn.textContent = 'Signing in...';
     btn.disabled = true;
-    try { await store.signIn(); } finally { render(); }
+    try {
+      await store.signInWithToken(token.trim());
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error';
+      showToast(`Sign-in failed: ${msg}`);
+    } finally {
+      render();
+    }
   });
 
   host.replaceChildren(label, counts, actorEl, btn);

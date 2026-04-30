@@ -1,10 +1,24 @@
 import { gitNative, type Event, type EventQuery } from 'git-native';
 import { GitHubAdapter } from 'git-native/github';
 
+const TOKEN_KEY = 'git-jigsaw:token';
+
+const tokenStorage = {
+  get: (): string | null => {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage.getItem(TOKEN_KEY);
+  },
+  set: (v: string | null): void => {
+    if (typeof localStorage === 'undefined') return;
+    if (v === null) localStorage.removeItem(TOKEN_KEY);
+    else localStorage.setItem(TOKEN_KEY, v);
+  },
+};
+
 export interface StoreLike {
   isAuthenticated(): boolean;
   currentActor(): string | null;
-  signIn(): Promise<void>;
+  signInWithToken(token: string): Promise<void>;
   signOut(): Promise<void>;
   commit(op: string, payload: Record<string, unknown>, opts?: { files?: Record<string, string> }): Promise<{ sha: string }>;
   eventsSince(since?: string): Promise<Event[]>;
@@ -13,18 +27,19 @@ export interface StoreLike {
 
 export function makeStore(week: string): StoreLike {
   if (!__OAUTH_CLIENT_ID__) {
-    console.warn('GH_OAUTH_CLIENT_ID is empty; sign-in will fail');
+    console.warn('GH_OAUTH_CLIENT_ID is empty');
   }
   const adapter = new GitHubAdapter({
     repo: __DATA_REPO__,
     path: `${__DATA_PATH__}${week}/`,
     clientId: __OAUTH_CLIENT_ID__,
+    storage: tokenStorage,
   });
   const real = gitNative({ adapter, pollInterval: 5000 });
   return {
     isAuthenticated: () => real.isAuthenticated(),
     currentActor: () => real.currentActor(),
-    signIn: () => real.signIn(),
+    signInWithToken: (token) => real.signInWithToken(token),
     signOut: () => real.signOut(),
     commit: (op, payload, opts) => real.commit({ op, ...payload }, opts),
     eventsSince: (since?: string) => {

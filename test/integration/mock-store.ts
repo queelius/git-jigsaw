@@ -28,6 +28,10 @@ export class MockStore {
     this.actor = this.actor ?? 'mockuser';
   }
 
+  async signInWithToken(_token: string): Promise<void> {
+    this.actor = this.actor ?? 'mockuser';
+  }
+
   async signOut(): Promise<void> { this.actor = null; }
 
   async commit(op: string, payload: any, opts?: { files?: Record<string, string> }): Promise<{ sha: string }> {
