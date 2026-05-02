@@ -57,6 +57,7 @@ async function bootstrap(): Promise<void> {
   const week = params.get('week') ?? currentWeek();
 
   const store = makeStore(week);
+  await store.restoreSession();
   const [state, assets] = await Promise.all([
     loadInitialState(store, week),
     loadAssets(__DATA_REPO__, week),

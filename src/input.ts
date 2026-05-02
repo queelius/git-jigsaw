@@ -51,6 +51,10 @@ export async function attemptPlace(args: AttemptPlaceArgs): Promise<AttemptResul
       showToast(`Someone else placed piece ${piece} just now.`);
       return { kind: 'conflict' };
     }
+    if (err?.name === 'AuthError') {
+      showToast(`Sign-in expired; please refresh the page and sign in again.`);
+      return { kind: 'auth-required' };
+    }
     showToast(`Could not place piece ${piece}: ${err?.message ?? 'unknown error'}.`);
     throw err;
   }

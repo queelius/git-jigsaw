@@ -32,6 +32,10 @@ export class MockStore {
     this.actor = this.actor ?? 'mockuser';
   }
 
+  async restoreSession(): Promise<void> {
+    // no-op for tests
+  }
+
   async signOut(): Promise<void> { this.actor = null; }
 
   async commit(op: string, payload: any, opts?: { files?: Record<string, string> }): Promise<{ sha: string }> {

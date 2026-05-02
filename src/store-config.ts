@@ -20,6 +20,7 @@ export interface StoreLike {
   currentActor(): string | null;
   signInWithToken(token: string): Promise<void>;
   signOut(): Promise<void>;
+  restoreSession(): Promise<void>;
   commit(op: string, payload: Record<string, unknown>, opts?: { files?: Record<string, string> }): Promise<{ sha: string }>;
   eventsSince(since?: string): Promise<Event[]>;
   subscribe(callback: (events: Event[]) => void): { unsubscribe(): void };
@@ -41,6 +42,7 @@ export function makeStore(week: string): StoreLike {
     currentActor: () => real.currentActor(),
     signInWithToken: (token) => real.signInWithToken(token),
     signOut: () => real.signOut(),
+    restoreSession: () => real.restoreSession(),
     commit: (op, payload, opts) => real.commit({ op, ...payload }, opts),
     eventsSince: (since?: string) => {
       const query: EventQuery = since ? { since } : {};
