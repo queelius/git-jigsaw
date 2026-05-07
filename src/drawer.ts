@@ -69,7 +69,10 @@ export class Drawer {
         startY = e.clientY;
       }
     });
-    const end = () => { startY = null; };
+    const end = (e: PointerEvent) => {
+      startY = null;
+      try { this.handle.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+    };
     this.handle.addEventListener('pointerup', end);
     this.handle.addEventListener('pointercancel', end);
   }

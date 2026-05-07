@@ -68,7 +68,7 @@ describe('Drawer', () => {
     expect(host.querySelector('#second-content')).not.toBeNull();
   });
 
-  it('handle click toggles peek<->half', () => {
+  it('handle click expands from peek, collapses otherwise', () => {
     const d = new Drawer(host);
     const handle = host.querySelector('.jigsaw-drawer-handle') as HTMLElement;
     handle.click();
@@ -85,5 +85,25 @@ describe('Drawer', () => {
     d.expand();
     d.collapse();
     expect(states).toEqual(['half', 'full', 'half']);
+  });
+
+  it('on returns an unsubscribe that stops further notifications', () => {
+    const d = new Drawer(host);
+    const states: DrawerState[] = [];
+    const off = d.on('change', (s) => states.push(s));
+    d.expand();
+    off();
+    d.expand();
+    expect(states).toEqual(['half']);
+  });
+
+  it('updates root class on transition', () => {
+    const d = new Drawer(host);
+    expect(host.querySelector('.drawer-peek')).not.toBeNull();
+    d.expand();
+    expect(host.querySelector('.drawer-half')).not.toBeNull();
+    expect(host.querySelector('.drawer-peek')).toBeNull();
+    d.expand();
+    expect(host.querySelector('.drawer-full')).not.toBeNull();
   });
 });
