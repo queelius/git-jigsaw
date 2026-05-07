@@ -4,9 +4,9 @@ interface StoreLike {
   eventsSince(since?: string): Promise<Event[]>;
 }
 
-export async function loadInitialState(store: StoreLike, _week: string): Promise<PuzzleState> {
+export async function loadInitialState(store: StoreLike, _week: string, gridSize: number): Promise<PuzzleState> {
   const events = await store.eventsSince();
-  const state = new PuzzleState();
+  const state = new PuzzleState(gridSize);
   for (const e of events) state.applyEvent(e);
   return state;
 }
@@ -14,6 +14,26 @@ export async function loadInitialState(store: StoreLike, _week: string): Promise
 export interface PuzzleAssets {
   source: HTMLImageElement;
   seed: string;
+  gridSize: number;
+  rotationEnabled: boolean;
+}
+
+export interface PuzzleMeta {
+  seed: string;
+  gridSize: number;
+  rotationEnabled: boolean;
+}
+
+export function parseMeta(text: string): PuzzleMeta {
+  const seedMatch = text.match(/seed:\s*([0-9a-f]+)/);
+  if (!seedMatch) throw new Error('seed not found in meta.yaml');
+  const gridMatch = text.match(/grid_size:\s*(\d+)/);
+  const rotMatch = text.match(/rotation:\s*(true|false)/i);
+  return {
+    seed: seedMatch[1],
+    gridSize: gridMatch ? parseInt(gridMatch[1], 10) : 8,
+    rotationEnabled: rotMatch ? rotMatch[1].toLowerCase() === 'true' : false,
+  };
 }
 
 export async function loadAssets(dataRepo: string, week: string): Promise<PuzzleAssets> {
@@ -24,8 +44,7 @@ export async function loadAssets(dataRepo: string, week: string): Promise<Puzzle
     if (!r.ok) throw new Error(`meta.yaml fetch failed: ${r.status}`);
     return r.text();
   });
-  const seedMatch = metaText.match(/seed:\s*([0-9a-f]+)/);
-  if (!seedMatch) throw new Error('seed not found in meta.yaml');
+  const meta = parseMeta(metaText);
   const source = await new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -33,5 +52,5 @@ export async function loadAssets(dataRepo: string, week: string): Promise<Puzzle
     img.onerror = () => reject(new Error('source.png failed to load'));
     img.src = sourceUrl;
   });
-  return { source, seed: seedMatch[1] };
+  return { source, seed: meta.seed, gridSize: meta.gridSize, rotationEnabled: meta.rotationEnabled };
 }
