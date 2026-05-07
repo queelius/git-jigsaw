@@ -1,11 +1,12 @@
 import type { PuzzleState } from './puzzle';
 import { showToast } from './toast';
-import { promptForToken } from './sign-in-modal';
+import { promptForToken, showSignOutMenu } from './sign-in-menu';
 
 interface StoreLike {
   isAuthenticated(): boolean;
   currentActor(): string | null;
   signInWithToken(token: string): Promise<void>;
+  signOut(): Promise<void>;
 }
 
 interface MountOpts {
@@ -21,31 +22,33 @@ export function mountAuthBar(host: HTMLElement, { state, store, week, gridSize }
   label.className = 'week';
   const counts = document.createElement('span');
   counts.className = 'counts';
-  const actorEl = document.createElement('span');
-  actorEl.className = 'actor';
-  const btn = document.createElement('button');
-  btn.className = 'sign-in';
+  const actorBtn = document.createElement('button');
+  actorBtn.className = 'actor-button';
+  actorBtn.style.display = 'none';
+  const signInBtn = document.createElement('button');
+  signInBtn.className = 'sign-in';
   const total = gridSize * gridSize;
 
   const render = (): void => {
     label.textContent = `Week ${week}`;
     counts.textContent = `${state.placedCount} of ${total} pieces placed; ${state.contributors.size} contributors`;
     if (store.isAuthenticated()) {
-      actorEl.textContent = store.currentActor() ?? '';
-      btn.textContent = 'Signed in';
-      btn.disabled = true;
+      actorBtn.textContent = `${store.currentActor() ?? ''} ▼`;
+      actorBtn.style.display = '';
+      signInBtn.style.display = 'none';
     } else {
-      actorEl.textContent = '';
-      btn.textContent = 'Sign in';
-      btn.disabled = false;
+      actorBtn.style.display = 'none';
+      signInBtn.style.display = '';
+      signInBtn.textContent = 'Sign in';
+      signInBtn.disabled = false;
     }
   };
 
-  btn.addEventListener('click', async () => {
+  signInBtn.addEventListener('click', async () => {
     const token = await promptForToken();
     if (!token) return;
-    btn.textContent = 'Signing in...';
-    btn.disabled = true;
+    signInBtn.textContent = 'Signing in...';
+    signInBtn.disabled = true;
     try {
       await store.signInWithToken(token);
     } catch (e) {
@@ -56,7 +59,15 @@ export function mountAuthBar(host: HTMLElement, { state, store, week, gridSize }
     }
   });
 
-  host.replaceChildren(label, counts, actorEl, btn);
+  actorBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showSignOutMenu(actorBtn, async () => {
+      await store.signOut();
+      render();
+    });
+  });
+
+  host.replaceChildren(label, counts, actorBtn, signInBtn);
   const off = state.on('change', render);
   render();
   return () => { off(); };

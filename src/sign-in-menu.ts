@@ -101,3 +101,53 @@ export function promptForToken(): Promise<string | null> {
     setTimeout(() => input.focus(), 0);
   });
 }
+
+export function showSignOutMenu(anchor: HTMLElement, onSignOut: () => void): void {
+  const existing = document.querySelector('.jigsaw-signout-menu');
+  if (existing) { existing.remove(); return; }
+
+  const menu = document.createElement('ul');
+  menu.className = 'jigsaw-signout-menu';
+  menu.setAttribute('role', 'menu');
+
+  const item = document.createElement('li');
+  item.setAttribute('role', 'menuitem');
+  item.tabIndex = 0;
+  item.textContent = 'Sign out';
+  item.addEventListener('click', () => {
+    cleanup();
+    onSignOut();
+  });
+  item.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      cleanup();
+      onSignOut();
+    }
+  });
+  menu.appendChild(item);
+
+  const rect = anchor.getBoundingClientRect();
+  menu.style.position = 'absolute';
+  menu.style.top = `${rect.bottom + window.scrollY + 4}px`;
+  menu.style.left = `${rect.right + window.scrollX - 120}px`;
+  document.body.appendChild(menu);
+  setTimeout(() => item.focus(), 0);
+
+  const cleanup = (): void => {
+    document.removeEventListener('click', onOutsideClick);
+    document.removeEventListener('keydown', onEscape);
+    menu.remove();
+  };
+
+  const onOutsideClick = (e: MouseEvent): void => {
+    if (!menu.contains(e.target as Node) && e.target !== anchor) cleanup();
+  };
+  const onEscape = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') cleanup();
+  };
+  setTimeout(() => {
+    document.addEventListener('click', onOutsideClick);
+    document.addEventListener('keydown', onEscape);
+  }, 0);
+}

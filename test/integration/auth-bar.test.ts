@@ -11,6 +11,7 @@ describe('auth-bar', () => {
   beforeEach(() => {
     host = document.createElement('div');
     document.body.appendChild(host);
+    document.querySelectorAll('.jigsaw-signout-menu').forEach((el) => el.remove());
   });
 
   it('renders the week label', () => {
@@ -35,17 +36,38 @@ describe('auth-bar', () => {
     expect(host.textContent).toMatch(/1 of 64/);
   });
 
-  it('shows Sign in when unauthenticated', () => {
+  it('shows Sign in button when unauthenticated', () => {
     const store = new MockStore();
     mountAuthBar(host, { state: new PuzzleState(8), store, week: '2026-W17', gridSize: 8 });
     const btn = host.querySelector('button.sign-in') as HTMLButtonElement;
     expect(btn).not.toBeNull();
-    expect(btn.textContent).toBe('Sign in');
+    expect(btn.style.display).not.toBe('none');
   });
 
-  it('shows actor name when authenticated', async () => {
+  it('shows actor button when authenticated', () => {
     const store = new MockStore({ initialActor: 'queelius' });
     mountAuthBar(host, { state: new PuzzleState(8), store, week: '2026-W17', gridSize: 8 });
-    expect(host.textContent).toContain('queelius');
+    const btn = host.querySelector('button.actor-button') as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toContain('queelius');
+  });
+
+  it('actor button click opens sign-out menu', () => {
+    const store = new MockStore({ initialActor: 'queelius' });
+    mountAuthBar(host, { state: new PuzzleState(8), store, week: '2026-W17', gridSize: 8 });
+    const btn = host.querySelector('button.actor-button') as HTMLButtonElement;
+    btn.click();
+    expect(document.querySelector('.jigsaw-signout-menu')).not.toBeNull();
+  });
+
+  it('sign-out menu Sign out item triggers signOut and re-renders', async () => {
+    const store = new MockStore({ initialActor: 'queelius' });
+    mountAuthBar(host, { state: new PuzzleState(8), store, week: '2026-W17', gridSize: 8 });
+    const btn = host.querySelector('button.actor-button') as HTMLButtonElement;
+    btn.click();
+    const item = document.querySelector('.jigsaw-signout-menu li') as HTMLElement;
+    item.click();
+    await Promise.resolve();
+    expect(store.isAuthenticated()).toBe(false);
   });
 });
