@@ -14,13 +14,18 @@
 }
 
 .jigsaw-header .week { font-weight: 600; }
-.jigsaw-header .actor { color: #666; }
-.jigsaw-header button.sign-in {
+.jigsaw-header .counts { color: #555; }
+.jigsaw-header button.sign-in,
+.jigsaw-header button.actor-button {
   margin-left: auto;
   padding: 0.4rem 0.8rem;
   font: inherit;
   cursor: pointer;
+  background: #f6f8fa;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
+.jigsaw-header button.actor-button:hover { background: #e0e0e0; }
 
 .jigsaw-board {
   display: block;
@@ -29,22 +34,150 @@
   height: auto;
   background: #fafafa;
   border: 1px solid #ccc;
+  touch-action: none;
 }
 
-.jigsaw-tray {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-  gap: 0.5rem;
+.jigsaw-drawer-host {
+  position: relative;
   margin-top: 1rem;
 }
-.jigsaw-tray .jigsaw-piece {
-  aspect-ratio: 1;
-  font: monospace;
-  background: #f0f0f0;
+.jigsaw-drawer {
+  background: #fff;
   border: 1px solid #ccc;
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  touch-action: pan-y;
+}
+.jigsaw-drawer.drawer-peek { max-height: 96px; }
+.jigsaw-drawer.drawer-half { max-height: 320px; }
+.jigsaw-drawer.drawer-full { max-height: 600px; }
+.jigsaw-drawer-handle {
+  display: block;
+  width: 100%;
+  height: 24px;
+  background: #f0f0f0;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  cursor: pointer;
+  position: relative;
+}
+.jigsaw-drawer-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 4px;
+  background: #999;
+  border-radius: 2px;
+}
+.jigsaw-drawer-body {
+  padding: 0.75rem;
+  overflow-y: auto;
+  max-height: calc(100% - 24px);
+}
+
+.jigsaw-tray-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.5rem;
+}
+.jigsaw-tray-grid .jigsaw-piece {
+  position: relative;
+  aspect-ratio: 1;
+  background: transparent;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  touch-action: none;
+}
+.jigsaw-tray-grid .jigsaw-piece canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.jigsaw-tray-grid .jigsaw-piece:hover { border-color: #333; }
+.jigsaw-rotate-overlay {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  font: 14px/22px sans-serif;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #999;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  text-align: center;
+}
+
+.jigsaw-leaderboard header h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+.jigsaw-leaderboard .meta {
+  color: #555;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+.jigsaw-leaderboard .rows {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+.jigsaw-leaderboard .row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #eee;
+}
+.jigsaw-leaderboard .row .actor {
+  font-weight: 600;
+  flex: 1;
+}
+.jigsaw-leaderboard .row .pieces {
+  font-variant-numeric: tabular-nums;
+}
+.jigsaw-leaderboard .row .span {
+  color: #777;
+  font-size: 0.85rem;
+}
+.jigsaw-leaderboard .badge {
+  font-size: 1rem;
+}
+.jigsaw-leaderboard footer.actions {
+  display: flex;
+  gap: 0.75rem;
+}
+.jigsaw-leaderboard footer.actions a {
+  color: #0366d6;
+}
+
+.jigsaw-signout-menu {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 1000;
+}
+.jigsaw-signout-menu li {
+  padding: 0.4rem 1rem;
   cursor: pointer;
 }
-.jigsaw-tray .jigsaw-piece:hover { background: #e0e0e0; }
+.jigsaw-signout-menu li:hover,
+.jigsaw-signout-menu li:focus {
+  background: #f0f0f0;
+  outline: none;
+}
 
 .jigsaw-toast-host {
   position: fixed;
@@ -85,24 +218,11 @@
   margin: 0 0 0.75rem;
   font-size: 1.25rem;
 }
-.jigsaw-modal p {
-  margin: 0 0 0.75rem;
-}
-.jigsaw-modal-steps-heading {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-.jigsaw-modal ol {
-  margin: 0 0 1rem 1.25rem;
-  padding: 0;
-}
-.jigsaw-modal ol li {
-  margin: 0.25rem 0;
-}
-.jigsaw-modal a {
-  color: #0366d6;
-  text-decoration: underline;
-}
+.jigsaw-modal p { margin: 0 0 0.75rem; }
+.jigsaw-modal-steps-heading { font-weight: 600; margin-bottom: 0.25rem; }
+.jigsaw-modal ol { margin: 0 0 1rem 1.25rem; padding: 0; }
+.jigsaw-modal ol li { margin: 0.25rem 0; }
+.jigsaw-modal a { color: #0366d6; text-decoration: underline; }
 .jigsaw-modal-input-label {
   display: block;
   font-weight: 600;
