@@ -11,6 +11,8 @@ interface StoreLike {
 export interface AttemptPlaceArgs {
   piece: number;
   slot: readonly [number, number];
+  rotation: 0 | 90 | 180 | 270;
+  gridSize: number;
   state: PuzzleState;
   store: StoreLike;
   week: string;
@@ -23,27 +25,23 @@ export type AttemptResult =
   | { kind: 'auth-required' };
 
 export async function attemptPlace(args: AttemptPlaceArgs): Promise<AttemptResult> {
-  const { piece, slot, state, store, week } = args;
+  const { piece, slot, rotation, gridSize, state, store, week } = args;
   if (!store.isAuthenticated()) {
     showToast('Sign in to place pieces.');
     return { kind: 'auth-required' };
   }
-  if (!isValidPlacement(piece, slot)) {
-    showToast('Wrong slot.');
+  if (!isValidPlacement(piece, slot, rotation, gridSize)) {
     return { kind: 'invalid' };
   }
   const path = `jigsaw/${week}/placements/${piece.toString().padStart(3, '0')}.json`;
-  const files = { [path]: JSON.stringify({ slot: [slot[0], slot[1]] }) };
+  const files = { [path]: JSON.stringify({ slot: [slot[0], slot[1]], rotation }) };
   try {
-    const { sha } = await store.commit('place', { piece, slot }, { files });
+    const { sha } = await store.commit('place', { piece, slot, rotation, grid_size: gridSize }, { files });
     state.applyEvent({
-      op: 'place',
-      piece,
-      slot,
+      op: 'place', piece, slot, rotation, grid_size: gridSize,
       actor: store.currentActor() ?? 'unknown',
       ts: new Date().toISOString(),
-      v: 1,
-      sha,
+      v: 1, sha,
     });
     return { kind: 'placed', sha };
   } catch (err: any) {

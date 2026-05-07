@@ -1,5 +1,4 @@
 import type { PuzzleState } from './puzzle';
-import { PIECE_COUNT } from './validator';
 import { showToast } from './toast';
 import { promptForToken } from './sign-in-modal';
 
@@ -13,9 +12,10 @@ interface MountOpts {
   state: PuzzleState;
   store: StoreLike;
   week: string;
+  gridSize: number;
 }
 
-export function mountAuthBar(host: HTMLElement, { state, store, week }: MountOpts): () => void {
+export function mountAuthBar(host: HTMLElement, { state, store, week, gridSize }: MountOpts): () => void {
   host.classList.add('jigsaw-auth-bar');
   const label = document.createElement('span');
   label.className = 'week';
@@ -25,10 +25,11 @@ export function mountAuthBar(host: HTMLElement, { state, store, week }: MountOpt
   actorEl.className = 'actor';
   const btn = document.createElement('button');
   btn.className = 'sign-in';
+  const total = gridSize * gridSize;
 
   const render = (): void => {
     label.textContent = `Week ${week}`;
-    counts.textContent = `${state.placedCount} of ${PIECE_COUNT} pieces placed; ${state.contributors.size} contributors`;
+    counts.textContent = `${state.placedCount} of ${total} pieces placed; ${state.contributors.size} contributors`;
     if (store.isAuthenticated()) {
       actorEl.textContent = store.currentActor() ?? '';
       btn.textContent = 'Signed in';

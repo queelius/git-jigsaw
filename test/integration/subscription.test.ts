@@ -15,10 +15,10 @@ function wireSubscription(store: MockStore, state: PuzzleState): () => void {
 describe('subscription wiring', () => {
   it('remote event applied to state', () => {
     const store = new MockStore();
-    const state = new PuzzleState();
+    const state = new PuzzleState(8);
     wireSubscription(store, state);
     const remote: PlaceEvent = {
-      op: 'place', piece: 5, slot: [0, 5], actor: 'remote', ts: 't', v: 1, sha: 'rx',
+      op: 'place', piece: 5, slot: [0, 5], rotation: 0, grid_size: 8, actor: 'remote', ts: 't', v: 1, sha: 'rx',
     };
     store.pushRemoteEvent(remote);
     expect(state.isPlaced(5)).toBe(true);
@@ -27,27 +27,27 @@ describe('subscription wiring', () => {
 
   it('multiple remote events applied in order', () => {
     const store = new MockStore();
-    const state = new PuzzleState();
+    const state = new PuzzleState(8);
     wireSubscription(store, state);
-    store.pushRemoteEvent({ op: 'place', piece: 0, slot: [0, 0], actor: 'a', ts: 't', v: 1, sha: '1' });
-    store.pushRemoteEvent({ op: 'place', piece: 1, slot: [0, 1], actor: 'b', ts: 't', v: 1, sha: '2' });
+    store.pushRemoteEvent({ op: 'place', piece: 0, slot: [0, 0], rotation: 0, grid_size: 8, actor: 'a', ts: 't', v: 1, sha: '1' });
+    store.pushRemoteEvent({ op: 'place', piece: 1, slot: [0, 1], rotation: 0, grid_size: 8, actor: 'b', ts: 't', v: 1, sha: '2' });
     expect(state.placedCount).toBe(2);
   });
 
   it('invalid remote events are ignored', () => {
     const store = new MockStore();
-    const state = new PuzzleState();
+    const state = new PuzzleState(8);
     wireSubscription(store, state);
-    store.pushRemoteEvent({ op: 'place', piece: 5, slot: [3, 0], actor: 'a', ts: 't', v: 1, sha: 'x' });
+    store.pushRemoteEvent({ op: 'place', piece: 5, slot: [3, 0], rotation: 0, grid_size: 8, actor: 'a', ts: 't', v: 1, sha: 'x' });
     expect(state.placedCount).toBe(0);
   });
 
   it('unsubscribe stops further updates', () => {
     const store = new MockStore();
-    const state = new PuzzleState();
+    const state = new PuzzleState(8);
     const off = wireSubscription(store, state);
     off();
-    store.pushRemoteEvent({ op: 'place', piece: 0, slot: [0, 0], actor: 'a', ts: 't', v: 1, sha: 'x' });
+    store.pushRemoteEvent({ op: 'place', piece: 0, slot: [0, 0], rotation: 0, grid_size: 8, actor: 'a', ts: 't', v: 1, sha: 'x' });
     expect(state.placedCount).toBe(0);
   });
 });

@@ -29,17 +29,17 @@ function buildShell(root: HTMLElement): { headerEl: HTMLElement; canvas: HTMLCan
   return { headerEl, canvas, trayEl };
 }
 
-function renderTray(trayEl: HTMLElement, state: PuzzleState, store: StoreLike, week: string, onAfterPlace: () => void): void {
+function renderTray(trayEl: HTMLElement, state: PuzzleState, store: StoreLike, week: string, gridSize: number, onAfterPlace: () => void): void {
   const actor = store.currentActor() ?? 'guest';
-  const t = new Tray(state, actor);
+  const t = new Tray(state, actor, gridSize);
   const buttons = t.unplaced().map((piece) => {
     const btn = document.createElement('button');
     btn.className = 'jigsaw-piece';
     btn.dataset.piece = piece.toString();
     btn.textContent = piece.toString().padStart(3, '0');
     btn.addEventListener('click', async () => {
-      const slot: [number, number] = [Math.floor(piece / 8), piece % 8];
-      await attemptPlace({ piece, slot, state, store, week });
+      const slot: [number, number] = [Math.floor(piece / gridSize), piece % gridSize];
+      await attemptPlace({ piece, slot, rotation: 0, gridSize, state, store, week });
       onAfterPlace();
     });
     return btn;
@@ -58,15 +58,13 @@ async function bootstrap(): Promise<void> {
 
   const store = makeStore(week);
   await store.restoreSession();
-  const [state, assets] = await Promise.all([
-    loadInitialState(store, week),
-    loadAssets(__DATA_REPO__, week),
-  ]);
+  const assets = await loadAssets(__DATA_REPO__, week);
+  const state = await loadInitialState(store, week, assets.gridSize);
 
-  mountAuthBar(headerEl, { state, store, week });
+  mountAuthBar(headerEl, { state, store, week, gridSize: assets.gridSize });
 
-  const repaint = (): void => paintBoard(ctx, state, assets.source, assets.seed);
-  const refreshTray = (): void => renderTray(trayEl, state, store, week, refreshTray);
+  const repaint = (): void => paintBoard(ctx, state, assets.source, assets.seed, assets.gridSize);
+  const refreshTray = (): void => renderTray(trayEl, state, store, week, assets.gridSize, refreshTray);
   state.on('change', repaint);
   state.on('change', refreshTray);
   repaint();

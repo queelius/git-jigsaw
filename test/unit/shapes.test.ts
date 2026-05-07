@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tabPattern, type Edge } from '../../src/shapes';
+import { tabPattern } from '../../src/shapes';
 
 const SEED = 'fixedseed12345678';
 
