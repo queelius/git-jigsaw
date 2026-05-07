@@ -1,4 +1,5 @@
 import type { PuzzleState } from './puzzle';
+import { pieceThumbnail } from './thumbnail';
 
 function fnv1a(s: string): number {
   let h = 0x811c9dc5;
@@ -20,7 +21,18 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+export type Rotation = 0 | 90 | 180 | 270;
+
+export interface TrayRenderOpts {
+  source: CanvasImageSource;
+  seed: string;
+  rotationEnabled: boolean;
+  onRotate(piece: number, rotation: Rotation): void;
+}
+
 export class Tray {
+  private rotations = new Map<number, Rotation>();
+
   constructor(
     private readonly state: PuzzleState,
     private readonly actor: string,
@@ -39,5 +51,42 @@ export class Tray {
       [all[i], all[j]] = [all[j], all[i]];
     }
     return all;
+  }
+
+  rotationOf(piece: number): Rotation {
+    return this.rotations.get(piece) ?? 0;
+  }
+
+  render(opts: TrayRenderOpts): HTMLElement {
+    const grid = document.createElement('div');
+    grid.className = 'jigsaw-tray-grid';
+
+    for (const piece of this.unplaced()) {
+      const btn = document.createElement('button');
+      btn.className = 'jigsaw-piece';
+      btn.dataset.piece = piece.toString();
+      const rot = this.rotationOf(piece);
+      const thumb = pieceThumbnail(piece, rot, opts.source, opts.seed, this.gridSize);
+      const thumbClone = thumb.cloneNode(true) as HTMLCanvasElement;
+      btn.appendChild(thumbClone);
+
+      if (opts.rotationEnabled) {
+        const overlay = document.createElement('button');
+        overlay.className = 'jigsaw-rotate-overlay';
+        overlay.type = 'button';
+        overlay.setAttribute('aria-label', `Rotate piece ${piece}`);
+        overlay.textContent = '↻';
+        overlay.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const current = this.rotationOf(piece);
+          const next = ((current + 90) % 360) as Rotation;
+          this.rotations.set(piece, next);
+          opts.onRotate(piece, next);
+        });
+        btn.appendChild(overlay);
+      }
+      grid.appendChild(btn);
+    }
+    return grid;
   }
 }
