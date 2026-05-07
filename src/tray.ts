@@ -1,4 +1,3 @@
-import { PIECE_COUNT } from './validator';
 import type { PuzzleState } from './puzzle';
 
 function fnv1a(s: string): number {
@@ -22,11 +21,16 @@ function mulberry32(seed: number): () => number {
 }
 
 export class Tray {
-  constructor(private readonly state: PuzzleState, private readonly actor: string) {}
+  constructor(
+    private readonly state: PuzzleState,
+    private readonly actor: string,
+    private readonly gridSize: number,
+  ) {}
 
   unplaced(): number[] {
+    const total = this.gridSize * this.gridSize;
     const all: number[] = [];
-    for (let i = 0; i < PIECE_COUNT; i++) {
+    for (let i = 0; i < total; i++) {
       if (!this.state.isPlaced(i)) all.push(i);
     }
     const rng = mulberry32(fnv1a('tray|' + this.actor));
