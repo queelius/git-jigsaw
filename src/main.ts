@@ -1,10 +1,15 @@
-import { PuzzleState, type Event } from './puzzle';
+import { isSolved, type Event } from './puzzle';
 import { paintBoard, BOARD_SIZE } from './renderer';
 import { Tray } from './tray';
 import { mountAuthBar } from './auth-bar';
 import { attemptPlace } from './input';
 import { loadInitialState, loadAssets } from './read-flow';
 import { makeStore, type StoreLike } from './store-config';
+import { Drawer } from './drawer';
+import { Dragger } from './dragger';
+import { buildLeaderboard, renderLeaderboard } from './leaderboard';
+import { fireConfetti } from './confetti';
+import { clearThumbnailCache } from './thumbnail';
 
 function currentWeek(): string {
   const d = new Date();
@@ -16,62 +21,88 @@ function currentWeek(): string {
   return `${target.getUTCFullYear()}-W${week.toString().padStart(2, '0')}`;
 }
 
-function buildShell(root: HTMLElement): { headerEl: HTMLElement; canvas: HTMLCanvasElement; trayEl: HTMLElement } {
+function buildShell(root: HTMLElement): { headerEl: HTMLElement; canvas: HTMLCanvasElement; drawerHost: HTMLElement } {
   const headerEl = document.createElement('header');
   headerEl.className = 'jigsaw-header';
   const canvas = document.createElement('canvas');
   canvas.className = 'jigsaw-board';
   canvas.width = BOARD_SIZE;
   canvas.height = BOARD_SIZE;
-  const trayEl = document.createElement('div');
-  trayEl.className = 'jigsaw-tray';
-  root.replaceChildren(headerEl, canvas, trayEl);
-  return { headerEl, canvas, trayEl };
-}
-
-function renderTray(trayEl: HTMLElement, state: PuzzleState, store: StoreLike, week: string, gridSize: number, onAfterPlace: () => void): void {
-  const actor = store.currentActor() ?? 'guest';
-  const t = new Tray(state, actor, gridSize);
-  const buttons = t.unplaced().map((piece) => {
-    const btn = document.createElement('button');
-    btn.className = 'jigsaw-piece';
-    btn.dataset.piece = piece.toString();
-    btn.textContent = piece.toString().padStart(3, '0');
-    btn.addEventListener('click', async () => {
-      const slot: [number, number] = [Math.floor(piece / gridSize), piece % gridSize];
-      await attemptPlace({ piece, slot, rotation: 0, gridSize, state, store, week });
-      onAfterPlace();
-    });
-    return btn;
-  });
-  trayEl.replaceChildren(...buttons);
+  const drawerHost = document.createElement('div');
+  drawerHost.className = 'jigsaw-drawer-host';
+  root.replaceChildren(headerEl, canvas, drawerHost);
+  return { headerEl, canvas, drawerHost };
 }
 
 async function bootstrap(): Promise<void> {
   const root = document.getElementById('jigsaw-root');
   if (!root) throw new Error('jigsaw-root not found');
-  const { headerEl, canvas, trayEl } = buildShell(root);
+  const { headerEl, canvas, drawerHost } = buildShell(root);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
   const params = new URLSearchParams(location.search);
   const week = params.get('week') ?? currentWeek();
+  const dataRepo = __DATA_REPO__;
 
-  const store = makeStore(week);
+  const store: StoreLike = makeStore(week);
   await store.restoreSession();
-  const assets = await loadAssets(__DATA_REPO__, week);
+  const assets = await loadAssets(dataRepo, week);
   const state = await loadInitialState(store, week, assets.gridSize);
+  const startedSolved = isSolved(state, assets.gridSize);
+  let confettiAlreadyFired = false;
 
   mountAuthBar(headerEl, { state, store, week, gridSize: assets.gridSize });
 
+  const drawer = new Drawer(drawerHost);
+  const tray = new Tray(state, store.currentActor() ?? 'guest', assets.gridSize);
+
+  const renderTray = (): void => {
+    drawer.setContent(tray.render({
+      source: assets.source,
+      seed: assets.seed,
+      rotationEnabled: assets.rotationEnabled,
+      onRotate: () => renderTray(),
+    }));
+  };
+
+  const renderLeaderboardContent = (): void => {
+    const data = buildLeaderboard(state, assets.gridSize);
+    drawer.setContent(renderLeaderboard(data, week, dataRepo));
+  };
+
   const repaint = (): void => paintBoard(ctx, state, assets.source, assets.seed, assets.gridSize);
-  const refreshTray = (): void => renderTray(trayEl, state, store, week, assets.gridSize, refreshTray);
-  state.on('change', repaint);
-  state.on('change', refreshTray);
-  repaint();
-  refreshTray();
+
+  const refresh = (): void => {
+    repaint();
+    if (isSolved(state, assets.gridSize)) {
+      renderLeaderboardContent();
+      if (!startedSolved && !confettiAlreadyFired) {
+        fireConfetti();
+        confettiAlreadyFired = true;
+      }
+    } else {
+      renderTray();
+    }
+  };
+
+  state.on('change', refresh);
+  refresh();
+
+  const dragger = new Dragger({
+    board: canvas,
+    gridSize: assets.gridSize,
+    getRotation: (piece) => tray.rotationOf(piece),
+    onAttempt: (piece, slot, rotation) =>
+      attemptPlace({ piece, slot, rotation, gridSize: assets.gridSize, state, store, week }),
+  });
+  dragger.attach(document.body);
 
   store.subscribe((events: Event[]) => {
     for (const e of events) state.applyEvent(e);
+  });
+
+  drawer.on('change', (s) => {
+    if (s === 'peek') clearThumbnailCache();
   });
 }
 
