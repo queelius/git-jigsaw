@@ -67,8 +67,7 @@ export class Tray {
       btn.dataset.piece = piece.toString();
       const rot = this.rotationOf(piece);
       const thumb = pieceThumbnail(piece, rot, opts.source, opts.seed, this.gridSize);
-      const thumbClone = thumb.cloneNode(true) as HTMLCanvasElement;
-      btn.appendChild(thumbClone);
+      btn.appendChild(thumb);
 
       if (opts.rotationEnabled) {
         const overlay = document.createElement('button');

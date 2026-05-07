@@ -2242,8 +2242,7 @@ export class Tray {
       btn.dataset.piece = piece.toString();
       const rot = this.rotationOf(piece);
       const thumb = pieceThumbnail(piece, rot, opts.source, opts.seed, this.gridSize);
-      const thumbClone = thumb.cloneNode(true) as HTMLCanvasElement;
-      btn.appendChild(thumbClone);
+      btn.appendChild(thumb);
 
       if (opts.rotationEnabled) {
         const overlay = document.createElement('button');
@@ -2253,7 +2252,8 @@ export class Tray {
         overlay.textContent = '↻';
         overlay.addEventListener('click', (e) => {
           e.stopPropagation();
-          const next = ((rot + 90) % 360) as Rotation;
+          const current = this.rotationOf(piece);
+          const next = ((current + 90) % 360) as Rotation;
           this.rotations.set(piece, next);
           opts.onRotate(piece, next);
         });
