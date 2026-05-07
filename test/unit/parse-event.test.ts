@@ -30,4 +30,19 @@ describe('parseCommitBody', () => {
     const e = parseCommitBody(yaml, 'x');
     expect(e.op).toBe('place');
   });
+
+  it('parses a V2-shape place commit body with grid_size and rotation', () => {
+    const yaml = readFileSync(join(__dirname, '../fixtures/py-commit-body-v2.yaml'), 'utf8');
+    const event = parseCommitBody(yaml, 'sha-from-git') as any;
+    expect(event).toMatchObject({
+      op: 'place',
+      piece: 42,
+      slot: [5, 2],
+      rotation: 0,
+      grid_size: 8,
+      actor: 'queelius',
+      v: 1,
+      sha: 'sha-from-git',
+    });
+  });
 });
