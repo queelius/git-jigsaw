@@ -3,17 +3,10 @@
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 
-// happy-dom v15 does not implement Path2D or canvas 2D context.
-// Stub the minimum surface area the renderer touches so we can
-// verify behavior without a real rendering engine.
 class Path2DStub {
   moveTo(_x: number, _y: number): void {}
   lineTo(_x: number, _y: number): void {}
-  bezierCurveTo(
-    _cp1x: number, _cp1y: number,
-    _cp2x: number, _cp2y: number,
-    _x: number, _y: number,
-  ): void {}
+  bezierCurveTo(): void {}
   closePath(): void {}
 }
 
@@ -33,18 +26,25 @@ beforeAll(() => {
   (globalThis as { Path2D?: unknown }).Path2D = Path2DStub;
 });
 
-import { piecePath, paintBoard, BOARD_SIZE, TILE_SIZE } from '../../src/renderer';
+import { piecePath, paintBoard, BOARD_SIZE, tileSizeFor } from '../../src/renderer';
 import { PuzzleState } from '../../src/puzzle';
+
+describe('renderer constants', () => {
+  it('BOARD_SIZE is 1024', () => {
+    expect(BOARD_SIZE).toBe(1024);
+  });
+
+  it('tileSizeFor scales with gridSize', () => {
+    expect(tileSizeFor(8)).toBe(128);
+    expect(tileSizeFor(10)).toBe(102.4);
+    expect(tileSizeFor(16)).toBe(64);
+  });
+});
 
 describe('piecePath', () => {
   it('returns a Path2D for a valid piece', () => {
-    const p = piecePath('seedabc1234567890', 0, 0);
+    const p = piecePath('seedabc1234567890', 0, 0, 8);
     expect(p).toBeInstanceOf(Path2DStub);
-  });
-
-  it('BOARD_SIZE is 1024 and TILE_SIZE is 128', () => {
-    expect(BOARD_SIZE).toBe(1024);
-    expect(TILE_SIZE).toBe(128);
   });
 });
 
@@ -65,18 +65,26 @@ describe('paintBoard', () => {
     };
   });
 
-  it('paints a placed piece', () => {
-    const s = new PuzzleState();
-    s.applyEvent({ op: 'place', piece: 0, slot: [0, 0], actor: 'alice', ts: 't', v: 1, sha: 'a' });
+  it('paints a placed piece on 8x8', () => {
+    const s = new PuzzleState(8);
+    s.applyEvent({ op: 'place', piece: 0, slot: [0, 0], rotation: 0, grid_size: 8, actor: 'alice', ts: 't', v: 1, sha: 'a' });
     const source = {} as CanvasImageSource;
-    paintBoard(ctx as unknown as CanvasRenderingContext2D, s, source, 'seedabc1234567890');
+    paintBoard(ctx as unknown as CanvasRenderingContext2D, s, source, 'seedabc1234567890', 8);
     expect(ctx.drawImage).toHaveBeenCalled();
   });
 
   it('does not paint unplaced pieces', () => {
-    const s = new PuzzleState();
+    const s = new PuzzleState(8);
     const source = {} as CanvasImageSource;
-    paintBoard(ctx as unknown as CanvasRenderingContext2D, s, source, 'seedabc1234567890');
+    paintBoard(ctx as unknown as CanvasRenderingContext2D, s, source, 'seedabc1234567890', 8);
     expect(ctx.drawImage).not.toHaveBeenCalled();
+  });
+
+  it('paints with the parameterized gridSize for 10x10', () => {
+    const s = new PuzzleState(10);
+    s.applyEvent({ op: 'place', piece: 42, slot: [4, 2], rotation: 0, grid_size: 10, actor: 'a', ts: 't', v: 1, sha: 'x' });
+    const source = {} as CanvasImageSource;
+    paintBoard(ctx as unknown as CanvasRenderingContext2D, s, source, 'seedabc1234567890', 10);
+    expect(ctx.drawImage).toHaveBeenCalled();
   });
 });
