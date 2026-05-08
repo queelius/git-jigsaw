@@ -67,7 +67,7 @@ export class Dragger {
       }
       if (onBoard) {
         const slot = this.slotAt(e.clientX, e.clientY);
-        log('tap on board', { slot });
+        log('tap on board', { slot: slot ? `[${slot[0]},${slot[1]}]` : null });
         if (slot) {
           const piece = this.heldPiece!;
           const rot = this.heldRotation;
@@ -117,11 +117,11 @@ export class Dragger {
       const slot = this.slotAt(e.clientX, e.clientY);
       const piece = this.heldPiece!;
       const rot = this.heldRotation;
-      log('drop attempt', { piece, slot, rot, x: e.clientX, y: e.clientY });
+      log('drop attempt', { piece, slot: slot ? `[${slot[0]},${slot[1]}]` : null, rot, x: e.clientX, y: e.clientY });
       this.removeGhost();
       this.reset();
       if (slot) {
-        log('attempt place from DRAGGING', { piece, slot, rot });
+        log('attempt place from DRAGGING', { piece, slot: `[${slot[0]},${slot[1]}]`, rot });
         void this.opts.onAttempt(piece, slot, rot);
       } else {
         log('drop off-board, no attempt');

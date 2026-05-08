@@ -31,6 +31,7 @@ export async function attemptPlace(args: AttemptPlaceArgs): Promise<AttemptResul
     return { kind: 'auth-required' };
   }
   if (!isValidPlacement(piece, slot, rotation, gridSize)) {
+    showToast(`Piece ${piece} doesn't go there.`);
     return { kind: 'invalid' };
   }
   const path = `jigsaw/${week}/placements/${piece.toString().padStart(3, '0')}.json`;
