@@ -9,7 +9,7 @@ import { Drawer } from './drawer';
 import { Dragger } from './dragger';
 import { buildLeaderboard, renderLeaderboard } from './leaderboard';
 import { fireConfetti } from './confetti';
-import { clearThumbnailCache } from './thumbnail';
+import { pieceThumbnail, clearThumbnailCache } from './thumbnail';
 
 function currentWeek(): string {
   const d = new Date();
@@ -92,6 +92,8 @@ async function bootstrap(): Promise<void> {
     board: canvas,
     gridSize: assets.gridSize,
     getRotation: (piece) => tray.rotationOf(piece),
+    getThumbnail: (piece, rotation) =>
+      pieceThumbnail(piece, rotation, assets.source, assets.seed, assets.gridSize),
     onAttempt: (piece, slot, rotation) =>
       attemptPlace({ piece, slot, rotation, gridSize: assets.gridSize, state, store, week }),
   });

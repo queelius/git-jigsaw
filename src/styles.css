@@ -258,3 +258,24 @@
   color: #fff !important;
 }
 .jigsaw-modal-submit:hover { background: #2c974b !important; }
+
+.jigsaw-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2000;
+  width: 96px;
+  height: 96px;
+  transform: translate(-50%, -50%);
+  opacity: 0.85;
+  transition: none;
+}
+.jigsaw-ghost canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.jigsaw-piece-selected {
+  outline: 3px solid #2da44e !important;
+  outline-offset: -3px;
+}
