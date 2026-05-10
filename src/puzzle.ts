@@ -43,19 +43,21 @@ export class PuzzleState {
 
   applyEvent(event: Event): void {
     if (event.op !== 'place') return;
-    const piece = (event as Record<string, unknown>).piece;
-    const slot = (event as Record<string, unknown>).slot;
-    const rotation = (event as Record<string, unknown>).rotation ?? 0;
-    const eventGrid = (event as Record<string, unknown>).grid_size ?? this.gridSize;
+    const raw = event as Record<string, unknown>;
+    const piece = raw.piece;
+    const slot = raw.slot;
+    const rotation = raw.rotation ?? 0;
+    const eventGrid = raw.grid_size ?? this.gridSize;
     if (typeof piece !== 'number') return;
     if (!Array.isArray(slot) || slot.length !== 2) return;
     if (typeof slot[0] !== 'number' || typeof slot[1] !== 'number') return;
     if (typeof rotation !== 'number') return;
-    if (typeof eventGrid !== 'number' || eventGrid !== this.gridSize) return;
-    if (!isValidPlacement(piece, [slot[0], slot[1]] as const, rotation as 0 | 90 | 180 | 270, this.gridSize)) return;
+    if (eventGrid !== this.gridSize) return;
+    const placement = [slot[0], slot[1]] as const;
+    if (!isValidPlacement(piece, placement, rotation as 0 | 90 | 180 | 270, this.gridSize)) return;
     if (this.placements.has(piece)) return;
-    this.placements.set(piece, [slot[0], slot[1]] as const);
-    this.contributors.add((event as PlaceEvent).actor);
+    this.placements.set(piece, placement);
+    this.contributors.add(event.actor);
     this.validEvents.push(event as PlaceEvent);
     this.emit();
   }

@@ -5,7 +5,7 @@ import { showToast } from './toast';
 interface StoreLike {
   isAuthenticated(): boolean;
   currentActor(): string | null;
-  commit(op: string, payload: any, opts?: { files?: Record<string, string> }): Promise<{ sha: string }>;
+  commit(op: string, payload: Record<string, unknown>, opts?: { files?: Record<string, string> }): Promise<{ sha: string }>;
 }
 
 export interface AttemptPlaceArgs {

@@ -101,18 +101,20 @@ export function renderLeaderboard(data: LeaderboardData, week: string, dataRepo:
 
   const footer = document.createElement('footer');
   footer.className = 'actions';
-  const logLink = document.createElement('a');
-  logLink.href = `https://github.com/${dataRepo}/commits/main/jigsaw/${week}`;
-  logLink.textContent = 'View git log';
-  logLink.target = '_blank';
-  logLink.rel = 'noopener noreferrer';
-  const sourceLink = document.createElement('a');
-  sourceLink.href = `https://raw.githubusercontent.com/${dataRepo}/main/jigsaw/${week}/source.png`;
-  sourceLink.textContent = 'Download source.png';
-  sourceLink.target = '_blank';
-  sourceLink.rel = 'noopener noreferrer';
-  footer.append(logLink, sourceLink);
+  footer.append(
+    extLink(`https://github.com/${dataRepo}/commits/main/jigsaw/${week}`, 'View git log'),
+    extLink(`https://raw.githubusercontent.com/${dataRepo}/main/jigsaw/${week}/source.png`, 'Download source.png'),
+  );
 
   section.append(header, ol, footer);
   return section;
+}
+
+function extLink(href: string, text: string): HTMLAnchorElement {
+  const a = document.createElement('a');
+  a.href = href;
+  a.textContent = text;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  return a;
 }

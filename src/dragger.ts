@@ -14,10 +14,18 @@ export interface DraggerOpts {
 }
 
 const DRAG_THRESHOLD_PX = 5;
-const DEBUG = true;
+const DEBUG = import.meta.env.DEV;
 
 function log(...args: unknown[]): void {
   if (DEBUG) console.log('[dragger]', ...args);
+}
+
+function cloneCanvas(src: HTMLCanvasElement): HTMLCanvasElement {
+  const out = document.createElement('canvas');
+  out.width = src.width;
+  out.height = src.height;
+  out.getContext('2d')?.drawImage(src, 0, 0);
+  return out;
 }
 
 export class Dragger {
@@ -148,13 +156,10 @@ export class Dragger {
 
   private slotAt(clientX: number, clientY: number): [number, number] | null {
     const rect = this.opts.board.getBoundingClientRect();
-    log('slotAt', { clientX, clientY, rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } });
     if (clientX < rect.left || clientX > rect.left + rect.width) return null;
     if (clientY < rect.top || clientY > rect.top + rect.height) return null;
-    const fx = (clientX - rect.left) / rect.width;
-    const fy = (clientY - rect.top) / rect.height;
-    const col = Math.floor(fx * this.opts.gridSize);
-    const row = Math.floor(fy * this.opts.gridSize);
+    const col = Math.floor(((clientX - rect.left) / rect.width) * this.opts.gridSize);
+    const row = Math.floor(((clientY - rect.top) / rect.height) * this.opts.gridSize);
     return [row, col];
   }
 
@@ -181,12 +186,7 @@ export class Dragger {
     ghost.className = 'jigsaw-ghost';
     const thumb = this.opts.getThumbnail?.(this.heldPiece, this.heldRotation);
     if (thumb) {
-      const cloneCanvas = document.createElement('canvas');
-      cloneCanvas.width = thumb.width;
-      cloneCanvas.height = thumb.height;
-      const ctx = cloneCanvas.getContext('2d');
-      if (ctx) ctx.drawImage(thumb, 0, 0);
-      ghost.appendChild(cloneCanvas);
+      ghost.appendChild(cloneCanvas(thumb));
     } else {
       ghost.textContent = String(this.heldPiece);
     }
