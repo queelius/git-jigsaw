@@ -12,6 +12,8 @@ export class MockStore {
   private events: AnyEvent[] = [];
   private actor: string | null = null;
   public commitCalls: Array<{ op: string; payload: any; files: Record<string, string> | undefined }> = [];
+  public deleteCalls: Array<{ files: string[] }> = [];
+  private deletedFiles = new Set<string>();
   private subscribers = new Set<(events: AnyEvent[]) => void>();
   private rejectNext: Error | undefined;
 
@@ -56,6 +58,20 @@ export class MockStore {
     };
     this.events.push(event);
     for (const fn of this.subscribers) fn([event]);
+    return { sha };
+  }
+
+  async delete(input: { files: string[]; branch?: string }): Promise<{ sha: string }> {
+    if (this.rejectNext) {
+      const e = this.rejectNext;
+      this.rejectNext = undefined;
+      throw e;
+    }
+    this.deleteCalls.push({ files: input.files });
+    for (const path of input.files) {
+      this.deletedFiles.add(path);
+    }
+    const sha = 'sha-' + (this.events.length + 1).toString().padStart(8, '0');
     return { sha };
   }
 

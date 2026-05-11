@@ -22,6 +22,7 @@ export interface StoreLike {
   signOut(): Promise<void>;
   restoreSession(): Promise<void>;
   commit(op: string, payload: Record<string, unknown>, opts?: { files?: Record<string, string> }): Promise<{ sha: string }>;
+  delete(input: { files: string[]; branch?: string }): Promise<{ sha: string }>;
   eventsSince(since?: string): Promise<Event[]>;
   subscribe(callback: (events: Event[]) => void): { unsubscribe(): void };
 }
@@ -44,6 +45,7 @@ export function makeStore(week: string): StoreLike {
     signOut: () => real.signOut(),
     restoreSession: () => real.restoreSession(),
     commit: (op, payload, opts) => real.commit({ op, ...payload }, opts),
+    delete: (input) => real.delete(input),
     eventsSince: (since?: string) => {
       const query: EventQuery = since ? { since } : {};
       return real.events(query);
