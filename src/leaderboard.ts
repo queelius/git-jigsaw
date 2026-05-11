@@ -1,10 +1,12 @@
 import type { PuzzleState, PlaceEvent } from './puzzle';
+import { isCanonicalSolved } from './completion';
 
 export interface ActorStats {
   actor: string;
-  pieces: number;
+  placements: number;
+  finalPieces: number;
   firstPlacement: { piece: number; ts: string };
-  lastPlacement:  { piece: number; ts: string };
+  lastPlacement: { piece: number; ts: string };
 }
 
 export interface LeaderboardData {
@@ -12,41 +14,63 @@ export interface LeaderboardData {
   startedAt: string;
   durationMs: number;
   totalPieces: number;
+  totalPlacements: number;
   contributors: number;
   closedItOut: string;
   rows: ActorStats[];
 }
 
-export function buildLeaderboard(state: PuzzleState, gridSize: number): LeaderboardData {
-  const events = [...state.validEvents].sort((a, b) => a.ts.localeCompare(b.ts));
+export function buildLeaderboard(state: PuzzleState): LeaderboardData {
+  const placeEvents = state.history.filter((e): e is PlaceEvent => e.op === 'place');
+  const sorted = [...placeEvents].sort((a, b) => a.ts.localeCompare(b.ts) || a.sha.localeCompare(b.sha));
+
   const byActor = new Map<string, PlaceEvent[]>();
-  for (const e of events) {
+  for (const e of sorted) {
     const arr = byActor.get(e.actor) ?? [];
     arr.push(e);
     byActor.set(e.actor, arr);
   }
+
+  // Final-piece ownership
+  const finalCounts = new Map<string, number>();
+  for (const [, p] of state.placements) {
+    finalCounts.set(p.actor, (finalCounts.get(p.actor) ?? 0) + 1);
+  }
+
   const rows: ActorStats[] = [];
   for (const [actor, arr] of byActor) {
     rows.push({
       actor,
-      pieces: arr.length,
+      placements: arr.length,
+      finalPieces: finalCounts.get(actor) ?? 0,
       firstPlacement: { piece: arr[0].piece, ts: arr[0].ts },
-      lastPlacement:  { piece: arr.at(-1)!.piece, ts: arr.at(-1)!.ts },
+      lastPlacement: { piece: arr.at(-1)!.piece, ts: arr.at(-1)!.ts },
     });
   }
+
   rows.sort((a, b) =>
-    b.pieces - a.pieces ||
+    b.finalPieces - a.finalPieces ||
+    b.placements - a.placements ||
     a.firstPlacement.ts.localeCompare(b.firstPlacement.ts),
   );
-  const startedAt = events[0]?.ts ?? '';
-  const solvedAt = events.at(-1)?.ts ?? '';
+
+  const startedAt = sorted[0]?.ts ?? '';
+  const solvedAt = sorted.at(-1)?.ts ?? '';
+
+  // closedItOut: the last place event's actor when canonical-solved is true
+  let closedItOut = '';
+  if (isCanonicalSolved(state)) {
+    closedItOut = sorted.at(-1)?.actor ?? '';
+  }
+
   return {
     solvedAt,
     startedAt,
     durationMs: startedAt && solvedAt ? new Date(solvedAt).getTime() - new Date(startedAt).getTime() : 0,
-    totalPieces: gridSize * gridSize,
+    totalPieces: state.gridSize * state.gridSize,
+    totalPlacements: sorted.length,
     contributors: byActor.size,
-    closedItOut: events.at(-1)?.actor ?? '',
+    closedItOut,
     rows,
   };
 }
@@ -61,6 +85,15 @@ export function formatDuration(ms: number): string {
   return `${mins}m`;
 }
 
+function extLink(href: string, text: string): HTMLAnchorElement {
+  const a = document.createElement('a');
+  a.href = href;
+  a.textContent = text;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  return a;
+}
+
 export function renderLeaderboard(data: LeaderboardData, week: string, dataRepo: string): HTMLElement {
   const section = document.createElement('section');
   section.className = 'jigsaw-leaderboard';
@@ -70,7 +103,8 @@ export function renderLeaderboard(data: LeaderboardData, week: string, dataRepo:
   title.textContent = `Solved ${week} in ${formatDuration(data.durationMs)}`;
   const meta = document.createElement('div');
   meta.className = 'meta';
-  meta.textContent = `${data.contributors} contributors · ${data.totalPieces} pieces`;
+  const placementsNote = data.totalPlacements > data.totalPieces ? ` · ${data.totalPlacements} placements` : '';
+  meta.textContent = `${data.contributors} contributors · ${data.totalPieces} pieces${placementsNote}`;
   header.append(title, meta);
 
   const ol = document.createElement('ol');
@@ -82,17 +116,15 @@ export function renderLeaderboard(data: LeaderboardData, week: string, dataRepo:
     const actor = document.createElement('span');
     actor.className = 'actor';
     actor.textContent = row.actor;
-    const pieces = document.createElement('span');
-    pieces.className = 'pieces';
-    pieces.textContent = `${row.pieces} pieces`;
-    const span = document.createElement('span');
-    span.className = 'span';
-    span.textContent = `first ${row.firstPlacement.piece} · last ${row.lastPlacement.piece}`;
-    li.append(actor, pieces, span);
+    const placements = document.createElement('span');
+    placements.className = 'pieces';
+    const finalNote = row.placements > row.finalPieces ? ` (${row.finalPieces} final)` : '';
+    placements.textContent = `${row.placements} placements${finalNote}`;
+    li.append(actor, placements);
     if (row.actor === data.closedItOut) {
       const badge = document.createElement('span');
       badge.className = 'badge closed-it-out';
-      badge.title = 'Placed the final piece';
+      badge.title = 'Placed the final canonical piece';
       badge.textContent = '🧩';
       li.appendChild(badge);
     }
@@ -108,13 +140,4 @@ export function renderLeaderboard(data: LeaderboardData, week: string, dataRepo:
 
   section.append(header, ol, footer);
   return section;
-}
-
-function extLink(href: string, text: string): HTMLAnchorElement {
-  const a = document.createElement('a');
-  a.href = href;
-  a.textContent = text;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
-  return a;
 }

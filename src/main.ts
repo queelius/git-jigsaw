@@ -66,7 +66,7 @@ async function bootstrap(): Promise<void> {
   };
 
   const renderLeaderboardContent = (): void => {
-    const data = buildLeaderboard(state, assets.gridSize);
+    const data = buildLeaderboard(state);
     drawer.setContent(renderLeaderboard(data, week, dataRepo));
   };
 
