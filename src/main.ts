@@ -1,15 +1,16 @@
-import { isSolved, type Event } from './puzzle';
+import { PuzzleState, type Event } from './puzzle';
 import { paintBoard, BOARD_SIZE } from './renderer';
 import { Tray } from './tray';
 import { mountAuthBar } from './auth-bar';
-import { attemptPlace } from './input';
-import { loadInitialState, loadAssets } from './read-flow';
-import { makeStore, type StoreLike } from './store-config';
+import { attemptPlace, attemptUnplace } from './input';
+import { loadAssets } from './read-flow';
+import { makeStore } from './store-config';
 import { Drawer } from './drawer';
 import { Dragger } from './dragger';
 import { buildLeaderboard, renderLeaderboard } from './leaderboard';
 import { fireConfetti } from './confetti';
 import { pieceThumbnail, clearThumbnailCache } from './thumbnail';
+import { isCanonicalSolved } from './completion';
 
 function currentWeek(): string {
   const d = new Date();
@@ -44,11 +45,16 @@ async function bootstrap(): Promise<void> {
   const week = params.get('week') ?? currentWeek();
   const dataRepo = __DATA_REPO__;
 
-  const store: StoreLike = makeStore(week);
+  const store = makeStore(week);
   await store.restoreSession();
   const assets = await loadAssets(dataRepo, week);
-  const state = await loadInitialState(store, week, assets.gridSize);
-  const startedSolved = isSolved(state, assets.gridSize);
+  const state = new PuzzleState(assets.gridSize, assets.seed);
+
+  // Initial load: fetch all events, then ingest
+  const initialEvents = await store.eventsSince(undefined);
+  state.ingest(initialEvents);
+
+  const startedSolved = isCanonicalSolved(state);
   let confettiAlreadyFired = false;
 
   mountAuthBar(headerEl, { state, store, week, gridSize: assets.gridSize });
@@ -74,7 +80,7 @@ async function bootstrap(): Promise<void> {
 
   const refresh = (): void => {
     repaint();
-    if (isSolved(state, assets.gridSize)) {
+    if (isCanonicalSolved(state)) {
       renderLeaderboardContent();
       if (!startedSolved && !confettiAlreadyFired) {
         fireConfetti();
@@ -92,15 +98,18 @@ async function bootstrap(): Promise<void> {
     board: canvas,
     gridSize: assets.gridSize,
     getRotation: (piece) => tray.rotationOf(piece),
+    placedAt: (row, col) => state.placedAt(row, col),
     getThumbnail: (piece, rotation) =>
       pieceThumbnail(piece, rotation, assets.source, assets.seed, assets.gridSize),
     onAttempt: (piece, slot, rotation) =>
-      attemptPlace({ piece, slot, rotation, gridSize: assets.gridSize, state, store, week }),
+      attemptPlace({ piece, slot, rotation, gridSize: assets.gridSize, seed: assets.seed, state, store, week }),
+    onUnplace: (piece) =>
+      attemptUnplace({ piece, gridSize: assets.gridSize, state, store, week }),
   });
   dragger.attach(document.body);
 
   store.subscribe((events: Event[]) => {
-    for (const e of events) state.applyEvent(e);
+    state.ingest(events);
   });
 
   drawer.on('change', (s) => {

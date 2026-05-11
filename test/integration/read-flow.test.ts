@@ -29,22 +29,25 @@ describe('parseMeta', () => {
 
 describe('loadInitialState', () => {
   it('applies all valid place events from the store', async () => {
+    // Use canonical placements: piece P at slot [P//N, P%N] shape-fits on an empty board.
+    // Piece 0 at [0,0] and piece 1 at [0,1] are canonical and will succeed.
+    // Piece 0 at [3,0] is a shape misfit (piece 0 is canonically at [0,0]) and will be rejected.
     const store = new MockStore({
       initialEvents: [
         { op: 'place', piece: 0, slot: [0, 0], rotation: 0, grid_size: 8, actor: 'a', ts: 't', v: 1, sha: '1' },
-        { op: 'place', piece: 9, slot: [1, 1], rotation: 0, grid_size: 8, actor: 'b', ts: 't', v: 1, sha: '2' },
+        { op: 'place', piece: 1, slot: [0, 1], rotation: 0, grid_size: 8, actor: 'b', ts: 't', v: 1, sha: '2' },
         { op: 'place', piece: 9, slot: [3, 0], rotation: 0, grid_size: 8, actor: 'c', ts: 't', v: 1, sha: '3' },
       ],
     });
-    const state = await loadInitialState(store, '2026-W17', 8);
+    const state = await loadInitialState(store, '2026-W17', 8, 'test-seed-12345');
     expect(state.placedCount).toBe(2);
     expect(state.contributors.size).toBe(2);
-    expect(state.validEvents.length).toBe(2);
+    expect(state.history.length).toBe(2);
   });
 
   it('returns empty state when store has no events', async () => {
     const store = new MockStore();
-    const state = await loadInitialState(store, '2026-W17', 8);
+    const state = await loadInitialState(store, '2026-W17', 8, 'test-seed-12345');
     expect(state.placedCount).toBe(0);
   });
 });

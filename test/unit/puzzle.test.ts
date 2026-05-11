@@ -19,18 +19,17 @@ function placeEvent(overrides: Partial<PlaceEvent>): PlaceEvent {
 }
 
 function unplaceEvent(overrides: Partial<Event> & { piece: number }): Event {
-  return {
-    op: 'unplace',
-    piece: 0,
-    slot: [0, 0],
-    rotation: 0,
+  const base = {
+    op: 'unplace' as const,
+    slot: [0, 0] as readonly [number, number],
+    rotation: 0 as const,
     grid_size: 8,
     actor: 'alice',
     ts: '2026-05-11T12:00:00Z',
     v: 1,
     sha: 'sha-' + Math.random().toString(36).slice(2, 8),
-    ...overrides,
-  } as Event;
+  };
+  return { ...base, ...overrides } as Event;
 }
 
 describe('PuzzleState (V3)', () => {

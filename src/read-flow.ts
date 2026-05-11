@@ -4,10 +4,10 @@ interface StoreLike {
   eventsSince(since?: string): Promise<Event[]>;
 }
 
-export async function loadInitialState(store: StoreLike, _week: string, gridSize: number): Promise<PuzzleState> {
+export async function loadInitialState(store: StoreLike, _week: string, gridSize: number, seed: string): Promise<PuzzleState> {
   const events = await store.eventsSince();
-  const state = new PuzzleState(gridSize);
-  for (const e of events) state.applyEvent(e);
+  const state = new PuzzleState(gridSize, seed);
+  state.ingest(events);
   return state;
 }
 

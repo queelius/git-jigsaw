@@ -29,7 +29,7 @@ describe('Tray.render', () => {
   beforeEach(() => clearThumbnailCache());
 
   it('returns an HTMLElement with one button per unplaced piece', () => {
-    const state = new PuzzleState(8);
+    const state = new PuzzleState(8, 'seed1234567890ab');
     const tray = new Tray(state, 'queelius', 8);
     const el = tray.render({
       source: makeFakeSource(),
@@ -41,8 +41,8 @@ describe('Tray.render', () => {
   });
 
   it('omits placed pieces', () => {
-    const state = new PuzzleState(8);
-    state.applyEvent({ op: 'place', piece: 0, slot: [0, 0], rotation: 0, grid_size: 8, actor: 'a', ts: 't', v: 1, sha: 'x' });
+    const state = new PuzzleState(8, 'seed1234567890ab');
+    state.ingest([{ op: 'place', piece: 0, slot: [0, 0], rotation: 0, grid_size: 8, actor: 'a', ts: 't', v: 1, sha: 'x' }]);
     const tray = new Tray(state, 'queelius', 8);
     const el = tray.render({
       source: makeFakeSource(),
@@ -54,7 +54,7 @@ describe('Tray.render', () => {
   });
 
   it('shows rotate overlay when rotationEnabled is true', () => {
-    const state = new PuzzleState(8);
+    const state = new PuzzleState(8, 'seed1234567890ab');
     const tray = new Tray(state, 'queelius', 8);
     const el = tray.render({
       source: makeFakeSource(),
@@ -66,7 +66,7 @@ describe('Tray.render', () => {
   });
 
   it('hides rotate overlay when rotationEnabled is false', () => {
-    const state = new PuzzleState(8);
+    const state = new PuzzleState(8, 'seed1234567890ab');
     const tray = new Tray(state, 'queelius', 8);
     const el = tray.render({
       source: makeFakeSource(),
@@ -78,7 +78,7 @@ describe('Tray.render', () => {
   });
 
   it('rotation cycles 0->90->180->270->0 on rotate-icon click', () => {
-    const state = new PuzzleState(8);
+    const state = new PuzzleState(8, 'seed1234567890ab');
     const tray = new Tray(state, 'queelius', 8);
     const rotations: number[] = [];
     const el = tray.render({
@@ -96,7 +96,7 @@ describe('Tray.render', () => {
   });
 
   it('button has data-piece attribute matching piece id', () => {
-    const state = new PuzzleState(8);
+    const state = new PuzzleState(8, 'seed1234567890ab');
     const tray = new Tray(state, 'queelius', 8);
     const el = tray.render({
       source: makeFakeSource(),
