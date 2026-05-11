@@ -3,14 +3,16 @@ import { BOARD_SIZE } from './renderer';
 export type DraggerState = 'IDLE' | 'POINTER_DOWN' | 'DRAGGING' | 'SELECTED';
 export type Rotation = 0 | 90 | 180 | 270;
 
-export interface AttemptResult { kind: 'placed' | 'invalid' | 'conflict' | 'auth-required'; }
+export interface AttemptResult { kind: 'placed' | 'invalid' | 'conflict' | 'auth-required' | 'unplaced' | 'noop'; }
 
 export interface DraggerOpts {
   board: HTMLElement;
   gridSize: number;
   getRotation(piece: number): Rotation;
+  placedAt(row: number, col: number): { piece: number; rotation: Rotation } | null;
   getThumbnail?(piece: number, rotation: Rotation): HTMLCanvasElement | null;
   onAttempt(piece: number, slot: readonly [number, number], rotation: Rotation): Promise<AttemptResult>;
+  onUnplace(piece: number): Promise<AttemptResult>;
 }
 
 const DRAG_THRESHOLD_PX = 5;
@@ -36,6 +38,7 @@ export class Dragger {
   private startY = 0;
   private host: HTMLElement | null = null;
   private ghost: HTMLElement | null = null;
+  private heldFromBoard = false;
 
   constructor(private readonly opts: DraggerOpts) {}
 
@@ -80,7 +83,7 @@ export class Dragger {
           const piece = this.heldPiece!;
           const rot = this.heldRotation;
           this.reset();
-          log('attempt place from SELECTED', { piece, slot, rot });
+          log('attempt place from SELECTED', { piece, slot: `[${slot[0]},${slot[1]}]`, rot });
           void this.opts.onAttempt(piece, slot, rot);
           return;
         }
@@ -90,14 +93,31 @@ export class Dragger {
 
     if (pieceBtn) {
       const piece = parseInt(pieceBtn.dataset.piece!, 10);
-      this.heldPiece = piece;
-      this.heldRotation = this.opts.getRotation(piece);
-      this.startX = e.clientX;
-      this.startY = e.clientY;
-      this.state = 'POINTER_DOWN';
-      log('-> POINTER_DOWN', { piece, rotation: this.heldRotation });
+      this.heldFromBoard = false;
+      this.beginHold(piece, this.opts.getRotation(piece), e);
+      return;
+    }
+    if (onBoard) {
+      const slot = this.slotAt(e.clientX, e.clientY);
+      if (slot) {
+        const placed = this.opts.placedAt(slot[0], slot[1]);
+        if (placed) {
+          this.heldFromBoard = true;
+          this.beginHold(placed.piece, placed.rotation, e);
+          return;
+        }
+      }
     }
   };
+
+  private beginHold(piece: number, rotation: Rotation, e: PointerEvent): void {
+    this.heldPiece = piece;
+    this.heldRotation = rotation;
+    this.startX = e.clientX;
+    this.startY = e.clientY;
+    this.state = 'POINTER_DOWN';
+    log('-> POINTER_DOWN', { piece, rotation, fromBoard: this.heldFromBoard });
+  }
 
   private onPointerMove = (e: PointerEvent): void => {
     if (this.state !== 'POINTER_DOWN' && this.state !== 'DRAGGING') return;
@@ -125,14 +145,18 @@ export class Dragger {
       const slot = this.slotAt(e.clientX, e.clientY);
       const piece = this.heldPiece!;
       const rot = this.heldRotation;
+      const fromBoard = this.heldFromBoard;
       log('drop attempt', { piece, slot: slot ? `[${slot[0]},${slot[1]}]` : null, rot, x: e.clientX, y: e.clientY });
       this.removeGhost();
       this.reset();
       if (slot) {
         log('attempt place from DRAGGING', { piece, slot: `[${slot[0]},${slot[1]}]`, rot });
         void this.opts.onAttempt(piece, slot, rot);
+      } else if (fromBoard) {
+        log('off-board drop -> unplace', { piece });
+        void this.opts.onUnplace(piece);
       } else {
-        log('drop off-board, no attempt');
+        log('off-board drop with tray piece, no-op');
       }
     }
   };
@@ -168,6 +192,7 @@ export class Dragger {
     this.state = 'IDLE';
     this.heldPiece = null;
     this.heldRotation = 0;
+    this.heldFromBoard = false;
   }
 
   private applySelectedClass(): void {

@@ -48,7 +48,9 @@ describe('Dragger', () => {
       board,
       gridSize: 8,
       getRotation: () => 0,
+      placedAt: () => null,
       onAttempt,
+      onUnplace: async () => ({ kind: 'unplaced' } as const),
     });
     dragger.attach(host);
     const btn = pieceButton(42);
@@ -68,7 +70,9 @@ describe('Dragger', () => {
       board,
       gridSize: 8,
       getRotation: () => 0,
+      placedAt: () => null,
       onAttempt,
+      onUnplace: async () => ({ kind: 'unplaced' } as const),
     });
     dragger.attach(host);
     const btn = pieceButton(42);
@@ -87,10 +91,12 @@ describe('Dragger', () => {
       board,
       gridSize: 8,
       getRotation: () => currentRot,
+      placedAt: () => null,
       onAttempt: (_p, _s, rot) => {
         attempts.push({ piece: _p, slot: _s, rotation: rot });
         return Promise.resolve({ kind: 'placed' });
       },
+      onUnplace: async () => ({ kind: 'unplaced' } as const),
     });
     dragger.attach(host);
     const btn = pieceButton(42);
@@ -112,7 +118,9 @@ describe('Dragger', () => {
       board,
       gridSize: 8,
       getRotation: () => 0,
+      placedAt: () => null,
       onAttempt,
+      onUnplace: async () => ({ kind: 'unplaced' } as const),
     });
     dragger.attach(host);
     const btn = pieceButton(42);
@@ -129,7 +137,9 @@ describe('Dragger', () => {
       board,
       gridSize: 8,
       getRotation: () => 0,
+      placedAt: () => null,
       onAttempt,
+      onUnplace: async () => ({ kind: 'unplaced' } as const),
     });
     dragger.attach(host);
     const btn = pieceButton(42);
@@ -141,5 +151,69 @@ describe('Dragger', () => {
     pointerEvent('pointerdown', btn, { clientX: 50, clientY: 1150 });
     pointerEvent('pointerup', btn, { clientX: 50, clientY: 1150 });
     expect(dragger.state).toBe('IDLE');
+  });
+
+  it('pickup from canvas: pointerdown on a slot with a placed piece begins a hold', () => {
+    const dragger = new Dragger({
+      board,
+      gridSize: 8,
+      getRotation: () => 0,
+      placedAt: (row: number, col: number) => {
+        if (row === 5 && col === 2) return { piece: 42, rotation: 0 };
+        return null;
+      },
+      onAttempt,
+      onUnplace: async () => ({ kind: 'unplaced' } as const),
+    });
+    dragger.attach(host);
+
+    pointerEvent('pointerdown', board, { clientX: 320, clientY: 700 });
+    expect(dragger.heldPiece).toBe(42);
+    expect(dragger.state).toBe('POINTER_DOWN');
+  });
+
+  it('off-board drop with heldFromBoard=true calls onUnplace', async () => {
+    const unplaceCalls: number[] = [];
+    const dragger = new Dragger({
+      board,
+      gridSize: 8,
+      getRotation: () => 0,
+      placedAt: (row: number, col: number) => (row === 5 && col === 2 ? { piece: 42, rotation: 0 } : null),
+      onAttempt,
+      onUnplace: async (piece: number) => {
+        unplaceCalls.push(piece);
+        return { kind: 'unplaced' } as const;
+      },
+    });
+    dragger.attach(host);
+
+    pointerEvent('pointerdown', board, { clientX: 320, clientY: 700 });
+    pointerEvent('pointermove', window, { clientX: 60, clientY: 1100 });
+    pointerEvent('pointerup', window, { clientX: 60, clientY: 1100 });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(unplaceCalls).toEqual([42]);
+  });
+
+  it('off-board drop with tray piece (heldFromBoard=false) does NOT call onUnplace', async () => {
+    const unplaceCalls: number[] = [];
+    const dragger = new Dragger({
+      board,
+      gridSize: 8,
+      getRotation: () => 0,
+      placedAt: () => null,
+      onAttempt,
+      onUnplace: async (piece: number) => {
+        unplaceCalls.push(piece);
+        return { kind: 'unplaced' } as const;
+      },
+    });
+    dragger.attach(host);
+    const btn = pieceButton(42);
+
+    pointerEvent('pointerdown', btn, { clientX: 50, clientY: 1150 });
+    pointerEvent('pointermove', window, { clientX: 60, clientY: 1100 });
+    pointerEvent('pointerup', window, { clientX: 60, clientY: 1100 });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(unplaceCalls).toEqual([]);
   });
 });
