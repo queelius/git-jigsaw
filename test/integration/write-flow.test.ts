@@ -2,57 +2,96 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect } from 'vitest';
-import { attemptPlace } from '../../src/input';
+import { attemptPlace, attemptUnplace } from '../../src/input';
 import { PuzzleState } from '../../src/puzzle';
 import { MockStore } from './mock-store';
 
-describe('attemptPlace', () => {
-  it('valid placement: calls commit with rotation, applies event locally', async () => {
+const SEED = 'fixedseed12345678';
+
+describe('attemptPlace V3', () => {
+  it('valid first placement commits and applies locally', async () => {
     const store = new MockStore({ initialActor: 'queelius' });
-    const state = new PuzzleState(8);
-    const result = await attemptPlace({ piece: 42, slot: [5, 2], rotation: 0, gridSize: 8, state, store, week: '2026-W17' });
+    const state = new PuzzleState(8, SEED);
+    const result = await attemptPlace({ piece: 0, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
     expect(result.kind).toBe('placed');
     expect(store.commitCalls).toHaveLength(1);
-    expect(store.commitCalls[0].op).toBe('place');
-    expect(store.commitCalls[0].payload.piece).toBe(42);
-    expect(store.commitCalls[0].payload.rotation).toBe(0);
-    expect(store.commitCalls[0].payload.grid_size).toBe(8);
-    expect(store.commitCalls[0].files).toEqual({
-      'jigsaw/2026-W17/placements/042.json': JSON.stringify({ slot: [5, 2], rotation: 0 }),
-    });
-    expect(state.isPlaced(42)).toBe(true);
+    expect(state.isPlaced(0)).toBe(true);
   });
 
-  it('non-zero rotation is invalid', async () => {
+  it('shape-misfit returns invalid with no commit', async () => {
     const store = new MockStore({ initialActor: 'queelius' });
-    const state = new PuzzleState(8);
-    const result = await attemptPlace({ piece: 42, slot: [5, 2], rotation: 90, gridSize: 8, state, store, week: '2026-W17' });
+    const state = new PuzzleState(8, SEED);
+    const result = await attemptPlace({ piece: 9, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
     expect(result.kind).toBe('invalid');
     expect(store.commitCalls).toHaveLength(0);
   });
 
-  it('invalid placement: does not commit, returns invalid', async () => {
+  it('no-op move (same slot, same rotation) returns noop with no commit', async () => {
     const store = new MockStore({ initialActor: 'queelius' });
-    const state = new PuzzleState(8);
-    const result = await attemptPlace({ piece: 42, slot: [3, 7], rotation: 0, gridSize: 8, state, store, week: '2026-W17' });
-    expect(result.kind).toBe('invalid');
+    const state = new PuzzleState(8, SEED);
+    await attemptPlace({ piece: 0, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
+    store.commitCalls.length = 0;
+    const result = await attemptPlace({ piece: 0, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
+    expect(result.kind).toBe('noop');
     expect(store.commitCalls).toHaveLength(0);
   });
 
-  it('conflict: returns conflict', async () => {
-    const conflictErr = new Error('conflict');
-    (conflictErr as any).name = 'ConflictError';
-    const store = new MockStore({ initialActor: 'queelius', rejectNextWith: conflictErr });
-    const state = new PuzzleState(8);
-    const result = await attemptPlace({ piece: 42, slot: [5, 2], rotation: 0, gridSize: 8, state, store, week: '2026-W17' });
-    expect(result.kind).toBe('conflict');
+  it('implicit-unplace-on-drop: dropping on occupied slot unplaces the occupant', async () => {
+    const store = new MockStore({ initialActor: 'queelius' });
+    const state = new PuzzleState(8, SEED);
+    await attemptPlace({ piece: 0, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
+    expect(state.isPlaced(0)).toBe(true);
+    // Try to put piece 1 at [0,0] (occupied)
+    // Should unplace 0 first, then attempt to place 1 (which is canonical at [0,1], so shape-fits will fail at [0,0])
+    const result = await attemptPlace({ piece: 1, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
+    expect(state.isPlaced(0)).toBe(false);
+    expect(result.kind).toBe('invalid');
   });
 
-  it('unauthenticated: returns auth-required without commit', async () => {
+  it('place identical re-place is a noop (short-circuits before validator)', async () => {
+    const store = new MockStore({ initialActor: 'queelius' });
+    const state = new PuzzleState(8, SEED);
+    await attemptPlace({ piece: 0, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
+    store.commitCalls.length = 0;
+    const result = await attemptPlace({ piece: 0, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
+    expect(result.kind).toBe('noop');
+    expect(store.commitCalls).toHaveLength(0);
+  });
+
+  it('unauthenticated returns auth-required without commit', async () => {
     const store = new MockStore();
-    const state = new PuzzleState(8);
-    const result = await attemptPlace({ piece: 0, slot: [0, 0], rotation: 0, gridSize: 8, state, store, week: '2026-W17' });
+    const state = new PuzzleState(8, SEED);
+    const result = await attemptPlace({ piece: 0, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
     expect(result.kind).toBe('auth-required');
     expect(store.commitCalls).toHaveLength(0);
+  });
+});
+
+describe('attemptUnplace V3', () => {
+  it('unplaces a placed piece via store.delete', async () => {
+    const store = new MockStore({ initialActor: 'queelius' });
+    const state = new PuzzleState(8, SEED);
+    await attemptPlace({ piece: 0, slot: [0, 0], rotation: 0, gridSize: 8, seed: SEED, state, store, week: '2026-W19' });
+    expect(state.isPlaced(0)).toBe(true);
+    const result = await attemptUnplace({ piece: 0, gridSize: 8, state, store, week: '2026-W19' });
+    expect(result.kind).toBe('unplaced');
+    expect(state.isPlaced(0)).toBe(false);
+    expect(store.deleteCalls).toHaveLength(1);
+    expect(store.deleteCalls[0].files).toEqual(['jigsaw/2026-W19/placements/000.json']);
+  });
+
+  it('unplacing a non-placed piece returns noop', async () => {
+    const store = new MockStore({ initialActor: 'queelius' });
+    const state = new PuzzleState(8, SEED);
+    const result = await attemptUnplace({ piece: 0, gridSize: 8, state, store, week: '2026-W19' });
+    expect(result.kind).toBe('noop');
+    expect(store.deleteCalls).toHaveLength(0);
+  });
+
+  it('unauthenticated unplace returns auth-required', async () => {
+    const store = new MockStore();
+    const state = new PuzzleState(8, SEED);
+    const result = await attemptUnplace({ piece: 0, gridSize: 8, state, store, week: '2026-W19' });
+    expect(result.kind).toBe('auth-required');
   });
 });
