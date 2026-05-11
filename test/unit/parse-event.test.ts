@@ -45,4 +45,19 @@ describe('parseCommitBody', () => {
       sha: 'sha-from-git',
     });
   });
+
+  it('parses a V3 unplace event with slot and rotation for self-description', () => {
+    const yaml = readFileSync(join(__dirname, '../fixtures/py-commit-body-v3-unplace.yaml'), 'utf8');
+    const event = parseCommitBody(yaml, 'sha-from-git') as any;
+    expect(event).toMatchObject({
+      op: 'unplace',
+      piece: 42,
+      slot: [5, 2],
+      rotation: 0,
+      grid_size: 8,
+      actor: 'queelius',
+      v: 1,
+      sha: 'sha-from-git',
+    });
+  });
 });

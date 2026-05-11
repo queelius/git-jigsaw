@@ -1,0 +1,8 @@
+op: unplace
+piece: 42
+slot: [5, 2]
+rotation: 0
+grid_size: 8
+actor: queelius
+ts: 2026-05-11T14:23:11Z
+v: 1
